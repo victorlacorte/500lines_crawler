@@ -1,6 +1,4 @@
-[Original project](https://github.com/aosabook/500lines/tree/master/crawler)
-
-### Original README
+### [Original project](https://github.com/aosabook/500lines/tree/master/crawler)
 ---
 Authors: A. Jesse Jiryu Davis and Guido van Rossum
 Project: Web crawler
