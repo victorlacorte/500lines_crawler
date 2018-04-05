@@ -10,8 +10,8 @@ import asyncio
 import logging
 import sys
 
-import crawling
-import reporting
+from crawler import crawling
+from crawler import reporting
 
 
 ARGS = argparse.ArgumentParser(description="Web crawler")

@@ -16,7 +16,6 @@ class Stats:
         for key, count in sorted(self.stats.items()):
             print('%10d' % count, key, file=file)
 
-
 def report(crawler, file=None):
     """Print a report on all completed URLs."""
     t1 = crawler.t1 or time.time()
@@ -43,8 +42,6 @@ def report(crawler, file=None):
     print('Todo:', crawler.q.qsize(), file=file)
     print('Done:', len(crawler.done), file=file)
     print('Date:', time.ctime(), 'local time', file=file)
-
-
 def url_report(stat, stats, file=None):
     """Print a report on the state for this URL.
 

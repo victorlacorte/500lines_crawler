@@ -1,3 +1,4 @@
+from aiohttp import ClientError, web
 import asyncio
 from contextlib import contextmanager
 import io
@@ -5,9 +6,7 @@ import logging
 import socket
 import unittest
 
-from aiohttp import ClientError, web
-
-import crawling
+from crawler import crawling
 
 
 @contextmanager
