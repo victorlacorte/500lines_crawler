@@ -1,6 +1,7 @@
-(https://github.com/aosabook/500lines/tree/master/crawler)[Original project]
+[Original project](https://github.com/aosabook/500lines/tree/master/crawler)
 
 ### Original README
+---
 Authors: A. Jesse Jiryu Davis and Guido van Rossum
 Project: Web crawler
 Requirements:
@@ -23,7 +24,7 @@ Andrew Svetlov, Nikolay Kim, and others.
 
 Install the crawler's requirements like:
 
-    python3 -m pip install -r requirements.txt
+```python3 -m pip install -r requirements.txt```
 
 In order to be fast and efficient, the program opens multiple parallel
 connections to the server and reuses connections for multiple
@@ -37,7 +38,7 @@ URLs) in under 50 seconds.
 
 Example command line (the -q reduces log output):
 
-    python3 crawl.py -q xkcd.com
+```python3 crawl.py -q xkcd.com```
 
 Use --help to see all options.
 
