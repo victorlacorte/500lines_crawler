@@ -28,7 +28,9 @@ def report(crawler, file=None):
     print('*** Report ***', file=file)
     try:
         show = list(crawler.done)
-        show.sort(key=lambda _stat: _stat.url)
+        # TODO similarly to what was done on crawling.py, why do we need to
+        #   cast to a str?
+        show.sort(key=lambda _stat: str(_stat.url))
         for stat in show:
             url_report(stat, stats, file=file)
     except KeyboardInterrupt:

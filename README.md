@@ -1,3 +1,8 @@
+#TODO
+[urllib.parse](https://docs.python.org/3/library/urllib.parse.html)
+Explore this library a little further. The current implementation is not
+working, and probably in part due to changes on the way URLs are handled
+
 ### [Original project](https://github.com/aosabook/500lines/tree/master/crawler)
 ---
 Authors: A. Jesse Jiryu Davis and Guido van Rossum
@@ -22,7 +27,9 @@ Andrew Svetlov, Nikolay Kim, and others.
 
 Install the crawler's requirements like:
 
-```python3 -m pip install -r requirements.txt```
+```
+python3 -m pip install -r requirements.txt
+```
 
 In order to be fast and efficient, the program opens multiple parallel
 connections to the server and reuses connections for multiple
@@ -36,7 +43,9 @@ URLs) in under 50 seconds.
 
 Example command line (the -q reduces log output):
 
-```python3 crawl.py -q xkcd.com```
+```
+python3 crawl.py -q xkcd.com
+```
 
 Use --help to see all options.
 
