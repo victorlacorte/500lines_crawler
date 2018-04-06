@@ -1,6 +1,7 @@
 ### TODO
 
-[urllib.parse](https://docs.python.org/3/library/urllib.parse.html)
+## [urllib.parse](https://docs.python.org/3/library/urllib.parse.html)
+
 Explore this library a little further. The current implementation is not
 working, and probably in part due to changes on the way URLs are handled
 
