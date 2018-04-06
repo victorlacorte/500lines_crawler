@@ -47,10 +47,10 @@ class Crawler:
     This manages two sets of URLs: 'urls' and 'done'.  'urls' is a set of
     URLs seen, and 'done' is a list of FetchStatistics.
     """
-    def __init__(self, roots,
+    def __init__(self, roots, session, *,
                  exclude=None, strict=True,  # What to crawl.
                  max_redirect=10, max_tries=4,  # Per-url limits.
-                 max_tasks=10, *, loop=None):
+                 max_tasks=10, loop=None):
         self.loop = loop or asyncio.get_event_loop()
         self.roots = roots
         self.exclude = exclude
@@ -61,7 +61,8 @@ class Crawler:
         self.q = Queue(loop=self.loop)
         self.seen_urls = set()
         self.done = []
-        self.session = aiohttp.ClientSession(loop=self.loop)
+        #self.session = aiohttp.ClientSession(loop=self.loop)
+        self.session = session
         self.root_domains = set()
         for root in roots:
             parts = urllib.parse.urlparse(root)
@@ -81,9 +82,11 @@ class Crawler:
         self.t0 = time.time()
         self.t1 = None
 
-    def close(self):
-        """Close resources."""
-        self.session.close()
+    # https://github.com/aio-libs/aiohttp/issues/2800
+    # TODO the link is unrelated to this code
+    # def close(self):
+    #     """Close resources."""
+    #     self.session.close()
 
     def host_okay(self, host):
         """Check if a host should be crawled.

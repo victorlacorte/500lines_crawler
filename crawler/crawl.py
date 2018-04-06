@@ -5,6 +5,7 @@
 # TODO:
 # - Add arguments to specify TLS settings (e.g. cert/key files).
 
+import aiohttp
 import argparse
 import asyncio
 import logging
@@ -49,14 +50,23 @@ ARGS.add_argument(
     '-q', '--quiet', action='store_const', const=0, dest='level',
     default=2, help='Only log errors')
 
-
 def fix_url(url):
     """Prefix a schema-less URL with http://."""
     if '://' not in url:
         url = 'http://' + url
     return url
-
-
+async def run_crawler(loop, roots, exclude, strict, max_redirect, max_tries,
+        max_tasks):
+    async with aiohttp.ClientSession(loop=loop) as session:
+        crawler = crawling.Crawler(roots,
+                                   session,
+                                   exclude=exclude,
+                                   strict=strict,
+                                   max_redirect=max_redirect,
+                                   max_tries=max_tries,
+                                   max_tasks=max_tasks)
+        await crawler.crawl()
+        reporting.report(crawler)
 def main():
     """Main program.
 
@@ -81,29 +91,23 @@ def main():
         loop = asyncio.get_event_loop()
 
     roots = {fix_url(root) for root in args.roots}
-
-    crawler = crawling.Crawler(roots,
-                               exclude=args.exclude,
-                               strict=args.strict,
-                               max_redirect=args.max_redirect,
-                               max_tries=args.max_tries,
-                               max_tasks=args.max_tasks,
-                               )
     try:
-        loop.run_until_complete(crawler.crawl())  # Crawler gonna crawl.
+        loop.run_until_complete(run_crawler(
+                                            loop,
+                                            roots,
+                                            args.exclude,
+                                            args.strict,
+                                            args.max_redirect,
+                                            args.max_tries,
+                                            args.max_tasks,
+                                            ))
     except KeyboardInterrupt:
         sys.stderr.flush()
         print('\nInterrupted\n')
     finally:
-        reporting.report(crawler)
-        crawler.close()
-
-        # next two lines are required for actual aiohttp resource cleanup
         loop.stop()
         loop.run_forever()
-
         loop.close()
-
 
 if __name__ == '__main__':
     main()
