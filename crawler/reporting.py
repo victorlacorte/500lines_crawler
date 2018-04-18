@@ -1,5 +1,6 @@
 """Reporting subsystem for web crawler."""
 
+from collections import defaultdict
 import time
 
 
@@ -7,10 +8,12 @@ class Stats:
     """Record stats of various sorts."""
 
     def __init__(self):
-        self.stats = {}
+        #self.stats = {}
+        self.stats = defaultdict(int)
 
     def add(self, key, count=1):
-        self.stats[key] = self.stats.get(key, 0) + count
+        #self.stats[key] = self.stats.get(key, 0) +  count
+        self.stats[key] += count
 
     def report(self, file=None):
         for key, count in sorted(self.stats.items()):
@@ -44,6 +47,7 @@ def report(crawler, file=None):
     print('Todo:', crawler.q.qsize(), file=file)
     print('Done:', len(crawler.done), file=file)
     print('Date:', time.ctime(), 'local time', file=file)
+
 def url_report(stat, stats, file=None):
     """Print a report on the state for this URL.
 
