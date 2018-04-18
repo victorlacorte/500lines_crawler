@@ -49,14 +49,18 @@ ARGS.add_argument(
 ARGS.add_argument(
     '-q', '--quiet', action='store_const', const=0, dest='level',
     default=2, help='Only log errors')
+ARGS.add_argument(
+    '--log_out', metavar='FILE',
+    help='Log the output to a file instead of sys.stdout')
 
 def fix_url(url):
     """Prefix a schema-less URL with http://."""
     if '://' not in url:
         url = 'http://' + url
     return url
+
 async def run_crawler(loop, roots, exclude, strict, max_redirect, max_tries,
-        max_tasks):
+        max_tasks, file=None):
     async with aiohttp.ClientSession(loop=loop) as session:
         crawler = crawling.Crawler(roots,
                                    session,
@@ -66,7 +70,8 @@ async def run_crawler(loop, roots, exclude, strict, max_redirect, max_tries,
                                    max_tries=max_tries,
                                    max_tasks=max_tasks)
         await crawler.crawl()
-        reporting.report(crawler)
+        reporting.report(crawler, file=file)
+
 def main():
     """Main program.
 
@@ -90,6 +95,11 @@ def main():
     else:
         loop = asyncio.get_event_loop()
 
+    if args.log_out:
+        f = open(args.log_out, 'w')
+    else:
+        f = None
+
     roots = {fix_url(root) for root in args.roots}
     try:
         loop.run_until_complete(run_crawler(
@@ -100,6 +110,7 @@ def main():
                                             args.max_redirect,
                                             args.max_tries,
                                             args.max_tasks,
+                                            file=f
                                             ))
     except KeyboardInterrupt:
         sys.stderr.flush()
@@ -108,6 +119,8 @@ def main():
         loop.stop()
         loop.run_forever()
         loop.close()
+        if f:
+            f.close()
 
 if __name__ == '__main__':
     main()
