@@ -119,7 +119,7 @@ def main():
         loop.stop()
         loop.run_forever()
         loop.close()
-        if f:
+        if f is not None:
             f.close()
 
 if __name__ == '__main__':

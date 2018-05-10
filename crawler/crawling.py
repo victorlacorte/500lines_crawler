@@ -1,19 +1,13 @@
 """A simple web crawler -- class implementing crawling logic."""
 
 import asyncio
+from asyncio import Queue
 import cgi
 from collections import namedtuple
 import logging
 import re
 import time
 import urllib.parse
-
-try:
-    # Python 3.4.
-    from asyncio import JoinableQueue as Queue
-except ImportError:
-    # Python 3.5.
-    from asyncio import Queue
 
 import aiohttp  # Install with "pip install aiohttp".
 
@@ -26,6 +20,15 @@ def lenient_host(host):
 
 
 def is_redirect(response):
+    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections
+    # Permanent redirections:
+    #   301
+    # Temporary redirections:
+    #   302, 303 and 307
+    # Special redirections:
+    #   300
+    # TODO there are other HTTP codes that imply redirections and are
+    #    not on the comparison tuple.
     return response.status in (300, 301, 302, 303, 307)
 
 
@@ -65,6 +68,7 @@ class Crawler:
         self.session = session
         self.root_domains = set()
         for root in roots:
+            # https://docs.python.org/3/library/urllib.parse.html#url-parsing
             parts = urllib.parse.urlparse(root)
             host, port = urllib.parse.splitport(parts.netloc)
             if not host:
@@ -124,13 +128,13 @@ class Crawler:
         """Record the FetchStatistic for completed / failed URL."""
         self.done.append(fetch_statistic)
 
-    @asyncio.coroutine
-    def parse_links(self, response):
+    
+    async def parse_links(self, response):
         """Return a FetchStatistic and list of links."""
         links = set()
         content_type = None
         encoding = None
-        body = yield from response.read()
+        body = await response.read()
 
         if response.status == 200:
             content_type = response.headers.get('content-type')
@@ -141,9 +145,11 @@ class Crawler:
 
             encoding = pdict.get('charset', 'utf-8')
             if content_type in ('text/html', 'application/xml'):
-                text = yield from response.text()
+                text = await response.text()
 
                 # Replace href with (?:href|src) to follow image links.
+                # TODO so is the (?i) a fancy way of adding a re.I(gnore case)
+                # flag?
                 urls = set(re.findall(r'''(?i)href=["']([^\s"'<>]+)''',
                                       text))
                 if urls:
@@ -170,14 +176,19 @@ class Crawler:
 
         return stat, links
 
-    @asyncio.coroutine
-    def fetch(self, url, max_redirect):
+    # TODO it seems that this algorithm is flawed: instead of performing a GET,
+    # it would be better to perform a HEAD and verify the MIME type before
+    # proceeding. This could save a lot of unnecessary downloaded MB
+    #   Also, a crawler could be set to download (cache) non-textual content: a
+    #   more robust coverage would be to verify the document date, the cache's
+    #   date, and download only if the document's date is newer
+    async def fetch(self, url, max_redirect):
         """Fetch one URL."""
         tries = 0
         exception = None
         while tries < self.max_tries:
             try:
-                response = yield from self.session.get(
+                response = await self.session.get(
                     url, allow_redirects=False)
 
                 if tries > 1:
@@ -227,22 +238,21 @@ class Crawler:
                     LOGGER.error('redirect limit reached for %r from %r',
                                  next_url, url)
             else:
-                stat, links = yield from self.parse_links(response)
+                stat, links = await self.parse_links(response)
                 self.record_statistic(stat)
                 for link in links.difference(self.seen_urls):
                     self.q.put_nowait((link, self.max_redirect))
                 self.seen_urls.update(links)
         finally:
-            yield from response.release()
+            await response.release()
 
-    @asyncio.coroutine
-    def work(self):
+    async def work(self):
         """Process queue items forever."""
         try:
             while True:
-                url, max_redirect = yield from self.q.get()
+                url, max_redirect = await self.q.get()
                 assert url in self.seen_urls
-                yield from self.fetch(url, max_redirect)
+                await self.fetch(url, max_redirect)
                 self.q.task_done()
         except asyncio.CancelledError:
             pass
@@ -268,13 +278,12 @@ class Crawler:
         self.seen_urls.add(url)
         self.q.put_nowait((url, max_redirect))
 
-    @asyncio.coroutine
-    def crawl(self):
+    async def crawl(self):
         """Run the crawler until all finished."""
         workers = [asyncio.Task(self.work(), loop=self.loop)
                    for _ in range(self.max_tasks)]
         self.t0 = time.time()
-        yield from self.q.join()
+        await self.q.join()
         self.t1 = time.time()
         for w in workers:
             w.cancel()
