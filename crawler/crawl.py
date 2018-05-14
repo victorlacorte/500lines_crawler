@@ -13,6 +13,7 @@ import sys
 
 from crawler import crawling
 from crawler import reporting
+from web.utils import fix_url
 
 
 ARGS = argparse.ArgumentParser(description="Web crawler")
@@ -50,17 +51,12 @@ ARGS.add_argument(
     '-q', '--quiet', action='store_const', const=0, dest='level',
     default=2, help='Only log errors')
 ARGS.add_argument(
-    '--log_out', metavar='FILE',
+    '--out', metavar='FILE',
     help='Log the output to a file instead of sys.stdout')
-
-def fix_url(url):
-    """Prefix a schema-less URL with http://."""
-    if '://' not in url:
-        url = 'http://' + url
-    return url
 
 async def run_crawler(loop, roots, exclude, strict, max_redirect, max_tries,
         max_tasks, file=None):
+    # We should inject a ClientSession a little differently
     async with aiohttp.ClientSession(loop=loop) as session:
         crawler = crawling.Crawler(roots,
                                    session,
@@ -95,8 +91,8 @@ def main():
     else:
         loop = asyncio.get_event_loop()
 
-    if args.log_out:
-        f = open(args.log_out, 'w')
+    if args.out:
+        f = open(args.out, 'w')
     else:
         f = None
 

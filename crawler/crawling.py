@@ -1,5 +1,6 @@
 """A simple web crawler -- class implementing crawling logic."""
 
+import aiohttp
 import asyncio
 from asyncio import Queue
 import cgi
@@ -9,27 +10,28 @@ import re
 import time
 import urllib.parse
 
-import aiohttp  # Install with "pip install aiohttp".
+import web.utils as utils
+
 
 LOGGER = logging.getLogger(__name__)
 
 
-def lenient_host(host):
-    parts = host.split('.')[-2:]
-    return ''.join(parts)
+# def lenient_host(host):
+#     parts = host.split('.')[-2:]
+#     return ''.join(parts)
 
 
-def is_redirect(response):
-    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections
-    # Permanent redirections:
-    #   301
-    # Temporary redirections:
-    #   302, 303 and 307
-    # Special redirections:
-    #   300
-    # TODO there are other HTTP codes that imply redirections and are
-    #    not on the comparison tuple.
-    return response.status in (300, 301, 302, 303, 307)
+# def is_redirect(response):
+#     # https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections
+#     # Permanent redirections:
+#     #   301
+#     # Temporary redirections:
+#     #   302, 303 and 307
+#     # Special redirections:
+#     #   300
+#     # TODO there are other HTTP codes that imply redirections and are
+#     #    not on the comparison tuple.
+#     return response.status in (300, 301, 302, 303, 307)
 
 
 FetchStatistic = namedtuple('FetchStatistic',
@@ -80,7 +82,7 @@ class Crawler:
                 if self.strict:
                     self.root_domains.add(host)
                 else:
-                    self.root_domains.add(lenient_host(host))
+                    self.root_domains.add(utils.lenient_host(host))
         for root in roots:
             self.add_url(root)
         self.t0 = time.time()
@@ -122,7 +124,7 @@ class Crawler:
 
         This compares the last two components of the host.
         """
-        return lenient_host(host) in self.root_domains
+        return utils.lenient_host(host) in self.root_domains
 
     def record_statistic(self, fetch_statistic):
         """Record the FetchStatistic for completed / failed URL."""
@@ -133,18 +135,23 @@ class Crawler:
         """Return a FetchStatistic and list of links."""
         links = set()
         content_type = None
+        pdict = {}
         encoding = None
-        body = await response.read()
+        #body = await response.read()
 
         if response.status == 200:
-            content_type = response.headers.get('content-type')
-            pdict = {}
+            # content_type = response.headers.get('content-type')
+            # pdict = {}
 
-            if content_type:
-                content_type, pdict = cgi.parse_header(content_type)
+            # if content_type:
+            #     content_type, pdict = cgi.parse_header(content_type)
+
+            content_type, pdict = utils.parse_header(response)
 
             encoding = pdict.get('charset', 'utf-8')
-            if content_type in ('text/html', 'application/xml'):
+            #if content_type in ('text/html', 'application/xml'):
+            if utils.is_text(content_type):
+                body = await response.read()
                 text = await response.text()
 
                 # Replace href with (?:href|src) to follow image links.
@@ -216,7 +223,7 @@ class Crawler:
             return
 
         try:
-            if is_redirect(response):
+            if utils.is_redirect(response):
                 location = response.headers['location']
                 next_url = urllib.parse.urljoin(url, location)
                 self.record_statistic(FetchStatistic(url=url,
