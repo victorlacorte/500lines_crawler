@@ -3,7 +3,6 @@
 import aiohttp
 import asyncio
 from asyncio import Queue
-import cgi
 from collections import namedtuple
 import logging
 import re
@@ -14,25 +13,6 @@ import web.utils as utils
 
 
 LOGGER = logging.getLogger(__name__)
-
-
-# def lenient_host(host):
-#     parts = host.split('.')[-2:]
-#     return ''.join(parts)
-
-
-# def is_redirect(response):
-#     # https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections
-#     # Permanent redirections:
-#     #   301
-#     # Temporary redirections:
-#     #   302, 303 and 307
-#     # Special redirections:
-#     #   300
-#     # TODO there are other HTTP codes that imply redirections and are
-#     #    not on the comparison tuple.
-#     return response.status in (300, 301, 302, 303, 307)
-
 
 FetchStatistic = namedtuple('FetchStatistic',
                             ['url',
@@ -52,7 +32,8 @@ class Crawler:
     This manages two sets of URLs: 'urls' and 'done'.  'urls' is a set of
     URLs seen, and 'done' is a list of FetchStatistics.
     """
-    def __init__(self, roots, session, *,
+    def __init__(self, *,
+                 roots, session,
                  exclude=None, strict=True,  # What to crawl.
                  max_redirect=10, max_tries=4,  # Per-url limits.
                  max_tasks=10, loop=None):
@@ -66,7 +47,6 @@ class Crawler:
         self.q = Queue(loop=self.loop)
         self.seen_urls = set()
         self.done = []
-        #self.session = aiohttp.ClientSession(loop=self.loop)
         self.session = session
         self.root_domains = set()
         for root in roots:
@@ -130,26 +110,18 @@ class Crawler:
         """Record the FetchStatistic for completed / failed URL."""
         self.done.append(fetch_statistic)
 
-    
     async def parse_links(self, response):
         """Return a FetchStatistic and list of links."""
         links = set()
         content_type = None
         pdict = {}
         encoding = None
-        #body = await response.read()
+        body = []
 
         if response.status == 200:
-            # content_type = response.headers.get('content-type')
-            # pdict = {}
-
-            # if content_type:
-            #     content_type, pdict = cgi.parse_header(content_type)
-
             content_type, pdict = utils.parse_header(response)
-
             encoding = pdict.get('charset', 'utf-8')
-            #if content_type in ('text/html', 'application/xml'):
+
             if utils.is_text(content_type):
                 body = await response.read()
                 text = await response.text()

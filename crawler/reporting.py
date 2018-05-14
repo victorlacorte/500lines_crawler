@@ -71,8 +71,11 @@ def url_report(stat, stats, file=None):
               file=file)
     else:
         if stat.status == 200:
-            stats.add('other')
-            stats.add('other_bytes', stat.size)
+            #stats.add('other')
+            #stats.add('other_bytes', stat.size)
+            # Addition
+            stats.add(stat.content_type)
+            #stats.add('%s_bytes' % stat.content_type, stat.size)
         else:
             stats.add('error')
             stats.add('error_bytes', stat.size)

@@ -13,8 +13,21 @@ import sys
 
 from crawler import crawling
 from crawler import reporting
-from web.utils import fix_url
+from web.utils import UAClient, fix_url
 
+
+def parse_login(s):
+    '''
+    Return a dict to be utilized as a ClientSession POST data payload from
+    parsing (str) `s'.
+
+    Example: s -> 'login=foo:pwd=bar': return {'login': 'foo', 'pwd': 'bar'}
+    '''
+    payload = {}
+    for e in s.split(':'):
+        k, v = e.split('=')
+        payload[k] = v
+    return payload
 
 ARGS = argparse.ArgumentParser(description="Web crawler")
 ARGS.add_argument(
@@ -24,7 +37,7 @@ ARGS.add_argument(
     '--select', action='store_true', dest='select',
     default=False, help='Use Select event loop instead of default')
 ARGS.add_argument(
-    'roots', nargs='*',
+    'roots', nargs='+',
     default=[], help='Root URL (may be repeated)')
 ARGS.add_argument(
     '--max_redirect', action='store', type=int, metavar='N',
@@ -53,30 +66,37 @@ ARGS.add_argument(
 ARGS.add_argument(
     '--out', metavar='FILE',
     help='Log the output to a file instead of sys.stdout')
+ARGS.add_argument(
+    '--login_url', help='URL to login on')
+ARGS.add_argument(
+    '--login_data', help='Login payload to be POSTed by a ClientSession.' \
+        ' Utilize format key=val:key=val (for username and password')
 
-async def run_crawler(loop, roots, exclude, strict, max_redirect, max_tries,
-        max_tasks, file=None):
-    # We should inject a ClientSession a little differently
-    async with aiohttp.ClientSession(loop=loop) as session:
-        crawler = crawling.Crawler(roots,
-                                   session,
-                                   exclude=exclude,
-                                   strict=strict,
-                                   max_redirect=max_redirect,
-                                   max_tries=max_tries,
-                                   max_tasks=max_tasks)
+async def run_crawler(*, loop, roots, exclude, strict, max_redirect, max_tries,
+        max_tasks, login_url, login_data, file=None):
+    headers = {'User-Agent': UAClient.chrome()}
+    async with aiohttp.ClientSession(headers=headers,
+                                     loop=loop) as session:
+        if login_data is not None:
+            payload = parse_login(login_data)
+            await session.post(login_url, data=payload)
+        crawler = crawling.Crawler(
+                    roots=roots,
+                    session=session,
+                    exclude=exclude,
+                    strict=strict,
+                    max_redirect=max_redirect,
+                    max_tries=max_tries,
+                    max_tasks=max_tasks)
         await crawler.crawl()
         reporting.report(crawler, file=file)
 
 def main():
-    """Main program.
-
-    Parse arguments, set up event loop, run crawler, print report.
-    """
+    '''
+    Main program. Parse arguments, set up event loop, run crawler, print
+    report.
+    '''
     args = ARGS.parse_args()
-    if not args.roots:
-        print('Use --help for command line help')
-        return
 
     levels = [logging.ERROR, logging.WARN, logging.INFO, logging.DEBUG]
     logging.basicConfig(level=levels[min(args.level, len(levels)-1)])
@@ -98,16 +118,18 @@ def main():
 
     roots = {fix_url(root) for root in args.roots}
     try:
-        loop.run_until_complete(run_crawler(
-                                            loop,
-                                            roots,
-                                            args.exclude,
-                                            args.strict,
-                                            args.max_redirect,
-                                            args.max_tries,
-                                            args.max_tasks,
-                                            file=f
-                                            ))
+        loop.run_until_complete(
+                run_crawler(
+                    loop=loop,
+                    roots=roots,
+                    exclude=args.exclude,
+                    strict=args.strict,
+                    max_redirect=args.max_redirect,
+                    max_tries=args.max_tries,
+                    max_tasks=args.max_tasks,
+                    login_url=args.login_url,
+                    login_data=args.login_data,
+                    file=f))
     except KeyboardInterrupt:
         sys.stderr.flush()
         print('\nInterrupted\n')
