@@ -1,4 +1,6 @@
 import cgi
+from datetime import datetime
+from email.utils import parsedate
 import os
 
 import fake_useragent
@@ -33,7 +35,8 @@ class UAClient:
         return cls.get_ua().ie
 
 
-lenient_host = lambda host: ''.join(host.split('.')[-2:])
+# Pretty sure we need to join on '.' rather than ''
+lenient_host = lambda host: '.'.join(host.split('.')[-2:])
 
 # Prefix a schema-less URL with http://
 fix_url = lambda url: 'http://' +  url if '://' not in url else url
@@ -51,12 +54,22 @@ is_redirect = lambda resp: resp.status in (300, 301, 302, 303, 307)
 
 is_text = lambda content: content in ('text/html', 'application/xml')
 
-def parse_header(resp):
+def parse_mime_header(resp, name='content-type'):
     '''
     https://docs.python.org/3.6/library/cgi.html#cgi.parse_header
     '''
-    content_type = resp.headers.get('content-type')
+    h = resp.headers.get(name)
     pdict = {}
-    if content_type:
-        content_type, pdict = cgi.parse_header(content_type)
-    return content_type, pdict
+    if h:
+        h, pdict = cgi.parse_header(h)
+    return h, pdict
+
+def parse_http_datetime(s):
+    '''
+    https://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html
+    http://code.activestate.com/recipes/577015-parse-http-date-time-string/
+    https://docs.python.org/3/library/email.util.html#email.utils.parsedate
+    '''
+    date = parsedate(s)
+    # "Note that indexes 6, 7, and 8 of the result tuple are not usable."
+    return datetime(*date[:6]) if date is not None else None

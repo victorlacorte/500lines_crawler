@@ -11,8 +11,7 @@ import asyncio
 import logging
 import sys
 
-from crawler import crawling
-from crawler import reporting
+from crawler import crawling, reporting
 from web.utils import UAClient, fix_url
 
 

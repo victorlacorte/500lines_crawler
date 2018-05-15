@@ -21,6 +21,7 @@ FetchStatistic = namedtuple('FetchStatistic',
                              'exception',
                              'size',
                              'content_type',
+                             'last_modified',
                              'encoding',
                              'num_urls',
                              'num_new_urls'])
@@ -114,13 +115,16 @@ class Crawler:
         """Return a FetchStatistic and list of links."""
         links = set()
         content_type = None
+        last_modified = None
         pdict = {}
         encoding = None
         body = []
 
         if response.status == 200:
-            content_type, pdict = utils.parse_header(response)
+            content_type, pdict = utils.parse_mime_header(response)
             encoding = pdict.get('charset', 'utf-8')
+            last_modified = utils.parse_http_datetime(
+                                response.headers.get('last-modified'))
 
             if utils.is_text(content_type):
                 body = await response.read()
@@ -149,18 +153,15 @@ class Crawler:
             exception=None,
             size=len(body),
             content_type=content_type,
+            last_modified=last_modified,
             encoding=encoding,
             num_urls=len(links),
             num_new_urls=len(links - self.seen_urls))
 
         return stat, links
 
-    # TODO it seems that this algorithm is flawed: instead of performing a GET,
-    # it would be better to perform a HEAD and verify the MIME type before
-    # proceeding. This could save a lot of unnecessary downloaded MB
-    #   Also, a crawler could be set to download (cache) non-textual content: a
-    #   more robust coverage would be to verify the document date, the cache's
-    #   date, and download only if the document's date is newer
+    # TODO rather than simply fetching an URL we could also query its
+    # last-modified header info
     async def fetch(self, url, max_redirect):
         """Fetch one URL."""
         tries = 0
@@ -189,6 +190,7 @@ class Crawler:
                                                  exception=exception,
                                                  size=0,
                                                  content_type=None,
+                                                 last_modified=None,
                                                  encoding=None,
                                                  num_urls=0,
                                                  num_new_urls=0))
@@ -204,6 +206,7 @@ class Crawler:
                                                      exception=None,
                                                      size=0,
                                                      content_type=None,
+                                                     last_modified=None,
                                                      encoding=None,
                                                      num_urls=0,
                                                      num_new_urls=0))
@@ -258,7 +261,7 @@ class Crawler:
         self.q.put_nowait((url, max_redirect))
 
     async def crawl(self):
-        """Run the crawler until all finished."""
+        """Run the crawler until all work is finished."""
         workers = [asyncio.Task(self.work(), loop=self.loop)
                    for _ in range(self.max_tasks)]
         self.t0 = time.time()

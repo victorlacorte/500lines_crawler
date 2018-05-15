@@ -1,23 +1,25 @@
-"""Reporting subsystem for web crawler."""
+'''Reporting subsystem for the web crawler.'''
 
 from collections import defaultdict
 import time
 
+from web.utils import is_text
 
 class Stats:
-    """Record stats of various sorts."""
-
+    '''Record stats of various sorts.'''
     def __init__(self):
-        #self.stats = {}
         self.stats = defaultdict(int)
 
     def add(self, key, count=1):
-        #self.stats[key] = self.stats.get(key, 0) +  count
         self.stats[key] += count
 
     def report(self, file=None):
         for key, count in sorted(self.stats.items()):
-            print('%10d' % count, key, file=file)
+            # https://docs.python.org/3/library/string.html#formatspec
+            # "The ',' option signals the use of a comma for a thousands
+            # separator."
+            print('%15s' % format(count, ','), key, file=file)
+
 
 def report(crawler, file=None):
     """Print a report on all completed URLs."""
@@ -61,26 +63,24 @@ def url_report(stat, stats, file=None):
         stats.add('redirect')
         print(stat.url, stat.status, 'redirect', stat.next_url,
               file=file)
-    elif stat.content_type == 'text/html':
+    elif is_text(stat.content_type):
         stats.add('html')
         stats.add('html_bytes', stat.size)
         print(stat.url, stat.status,
-              stat.content_type, stat.encoding,
-              stat.size,
+              stat.content_type, stat.last_modified,
+              stat.encoding, stat.size,
               '%d/%d' % (stat.num_new_urls, stat.num_urls),
               file=file)
     else:
         if stat.status == 200:
             #stats.add('other')
             #stats.add('other_bytes', stat.size)
-            # Addition
             stats.add(stat.content_type)
-            #stats.add('%s_bytes' % stat.content_type, stat.size)
         else:
             stats.add('error')
             stats.add('error_bytes', stat.size)
             stats.add('status_%s' % stat.status)
         print(stat.url, stat.status,
-              stat.content_type, stat.encoding,
-              stat.size,
+              stat.content_type, stat.last_modified,
+              stat.encoding, stat.size,
               file=file)
